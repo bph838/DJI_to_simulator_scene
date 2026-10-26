@@ -67,6 +67,15 @@ try {
     writeFileSync(path.join(out, `face_${face}.jpg`), Buffer.from(jpeg, "base64"));
     console.log(`  ${face}: ${holes} uncovered pixels filled`);
   }
+  if (process.env.PANO_WIDTH) {
+    const width = Number(process.env.PANO_WIDTH);
+    const p = await page.evaluate((w) => window.sceneMaker.renderPanorama(w), width);
+    writeFileSync(path.join(out, `pano_${width}_preview.jpg`), Buffer.from(p.preview, "base64"));
+    console.log(`Panorama ${width}: render ${p.renderS.toFixed(1)} s, fill ${p.fillS.toFixed(1)} s (${p.holes} px), ` +
+      `encode ${p.encodeS.toFixed(1)} s, ${p.mb.toFixed(1)} MB`);
+    console.log("Size options:", p.options);
+  }
+
   const info = await page.evaluate(() => {
     const gl = document.getElementById("viewer").getContext("webgl2");
     const dbg = gl.getExtension("WEBGL_debug_renderer_info");

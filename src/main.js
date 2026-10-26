@@ -81,6 +81,7 @@ function exportSettings() {
     jpegQuality: Number($("jpeg-quality").value) / 100,
     writeXml: $("write-xml").checked,
     equirect: $("write-equirect").checked,
+    equirectWidth: Number($("equirect-size").value),
     author: $("author").value.trim(),
     droneModel: state.summary?.model,
   };
@@ -137,6 +138,7 @@ async function loadFiles(name, files) {
   updateXmlName();
 
   rebuildCameras();
+  fillEquirectSizes();
   state.previewTextures = new TextureCache(gl, async (f) => f.thumb, 1 << 30);
   $("step-preview").hidden = false;
   $("step-export").hidden = false;
@@ -273,6 +275,38 @@ if (viewer) {
 
 // --- Step 3: export -------------------------------------------------------------------
 
+// Chrome caps a canvas at about 268 million pixels; an equirect is width x width/2.
+const MAX_EQUIRECT_WIDTH = 2 * Math.floor(Math.sqrt(268435456 * 2) / 2);
+
+// Panorama widths up to the most detail the photos hold (their centre resolution
+// spread over 360 degrees). Bigger would only be upscaled.
+function fillEquirectSizes() {
+  const cam = state.frames[0].cam;
+  const native = Math.min(MAX_EQUIRECT_WIDTH, 16 * Math.round((360 * cam.focalPx * (Math.PI / 180)) / 16));
+  const sizes = [4096, 8192, 12288, 16384].filter((w) => w < native - 256);
+  const sel = $("equirect-size");
+  const previous = Number(sel.value) || store.get("equirectWidth", 8192);
+  sel.innerHTML =
+    sizes.map((w) => `<option value="${w}">${w} × ${w / 2}</option>`).join("") +
+    `<option value="${native}">${native} × ${native / 2} (full detail)</option>`;
+  const options = [...sizes, native];
+  sel.value = String(options.reduce((best, w) => (Math.abs(w - previous) < Math.abs(best - previous) ? w : best)));
+  updateEquirectNote();
+}
+
+function updateEquirectNote() {
+  const w = Number($("equirect-size").value);
+  // ImageData + canvas copy, 4 bytes per pixel each.
+  const gb = (w * (w / 2) * 4 * 2) / 1e9;
+  $("equirect-note").textContent = gb > 0.5 ? `needs about ${gb.toFixed(1)} GB of memory` : "";
+}
+
+$("write-equirect").addEventListener("change", (e) => ($("equirect-size-wrap").hidden = !e.target.checked));
+$("equirect-size").addEventListener("change", () => {
+  store.set("equirectWidth", Number($("equirect-size").value));
+  updateEquirectNote();
+});
+
 function updateXmlName() {
   $("xml-name").textContent = `${sceneName() || "scene"}.xml`;
   updateOutPath();
@@ -360,6 +394,31 @@ window.sceneMaker = {
     textures.clear();
     stitcher.disposeTargets();
     return out;
+  },
+  // Renders a full panorama the way export does; returns timings, the encoded
+  // size and a small preview.
+  async renderPanorama(width) {
+    const t0 = performance.now();
+    const textures = new TextureCache(gl, (f) => createImageBitmap(f.file), 640 << 20);
+    let img = await stitcher.renderEquirect({ frames: state.frames, textures, axes: sceneAxes(state.heading), width, settings: viewSettings() });
+    textures.clear();
+    stitcher.disposeTargets();
+    const t1 = performance.now();
+    const holes = fillHoles(img);
+    const t2 = performance.now();
+    const c = new OffscreenCanvas(width, width / 2);
+    c.getContext("2d").putImageData(img, 0, 0);
+    img = null;
+    const blob = await c.convertToBlob({ type: "image/jpeg", quality: 0.92 });
+    const t3 = performance.now();
+    const small = new OffscreenCanvas(2048, 1024);
+    small.getContext("2d").drawImage(c, 0, 0, 2048, 1024);
+    const preview = await blobToBase64(await small.convertToBlob({ type: "image/jpeg", quality: 0.9 }));
+    return {
+      holes, mb: blob.size / 1048576, preview,
+      renderS: (t1 - t0) / 1000, fillS: (t2 - t1) / 1000, encodeS: (t3 - t2) / 1000,
+      options: [...document.querySelectorAll("#equirect-size option")].map((o) => o.textContent),
+    };
   },
   lonLatOfFrame: (i) => dirToLonLat(sceneAxes(state.heading), state.frames[i].cam.basis.forward),
 };

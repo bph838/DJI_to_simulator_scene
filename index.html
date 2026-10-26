@@ -111,7 +111,12 @@
           <div class="field">
             <span>Also</span>
             <label><input id="write-xml" type="checkbox" checked /> Create / update <code id="xml-name">scene.xml</code> resolution flags</label>
-            <label><input id="write-equirect" type="checkbox" /> Save 360° panorama (for Blender)</label>
+            <label><input id="write-equirect" type="checkbox" checked /> Save 360° panorama (for Blender)</label>
+            <label id="equirect-size-wrap">
+              size
+              <select id="equirect-size"></select>
+              <small id="equirect-note" class="muted"></small>
+            </label>
           </div>
           <label>Author (for a new airport file) <input id="author" type="text" /></label>
         </div>

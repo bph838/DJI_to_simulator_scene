@@ -17,7 +17,7 @@ export async function exportScene({ stitcher, frames, outDir, scene, settings, l
   const sceneDir = await subdir(outDir, scene);
 
   // Decode full-size photos on demand; smaller outputs don't need every pixel.
-  const pxPerDegNeeded = largest / 90;
+  const pxPerDegNeeded = Math.max(largest / 90, settings.equirect ? settings.equirectWidth / 360 : 0);
   const textures = new TextureCache(stitcher.gl, async (f) => {
     const pxPerDeg = (f.cam.focalPx * Math.PI) / 180;
     const s = Math.min(1, (1.5 * pxPerDegNeeded) / pxPerDeg);
@@ -53,17 +53,20 @@ export async function exportScene({ stitcher, frames, outDir, scene, settings, l
     }
 
     if (settings.equirect) {
-      const width = Math.min(8192, largest * 4);
+      const width = settings.equirectWidth;
       log(`Rendering 360° panorama ${width} × ${width / 2}…`);
-      const img = await stitcher.renderEquirect({ frames, textures, axes, width, settings });
+      let img = await stitcher.renderEquirect({ frames, textures, axes, width, settings });
       if (settings.fillGaps) fillHoles(img);
       tick("panorama rendered");
       const c = new OffscreenCanvas(width, width / 2);
       c.getContext("2d").putImageData(img, 0, 0);
-      const blob = await c.convertToBlob({ type: "image/jpeg", quality: 0.92 });
+      img = null; // let the pixel copy go before encoding, these can be gigabytes
+      // Always JPEG: a full-detail PNG panorama would be several hundred MB.
+      const blob = await c.convertToBlob({ type: "image/jpeg", quality: settings.jpegQuality });
       // Kept beside the airport folder so it isn't shipped inside it.
-      await writeFile(outDir, `${scene}_360.jpg`, blob);
-      log(`  wrote ${scene}_360.jpg (next to the scene folder)`);
+      const name = `${scene}_360_${width}.jpg`;
+      await writeFile(outDir, name, blob);
+      log(`  wrote ${name} (${(blob.size / 1048576).toFixed(1)} MB, next to the scene folder)`);
       tick("panorama written");
     }
   } finally {

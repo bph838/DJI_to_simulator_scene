@@ -70,6 +70,10 @@ input[type="text"], input[type="number"] {
   border: 1px solid var(--line); background: var(--bg); color: var(--ink);
 }
 input[type="number"] { width: 84px; }
+select {
+  font: inherit; padding: 4px 6px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+}
 
 .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 12px 0; }
 .progress > div { height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }

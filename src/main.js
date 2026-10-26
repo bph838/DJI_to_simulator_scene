@@ -34,7 +34,15 @@ try {
   $("unsupported").hidden = false;
   $("unsupported").textContent = e.message;
 }
-if (!canUseFolders()) $("unsupported").hidden = false;
+if (!window.isSecureContext) {
+  // Chrome only offers folder access on https:// (or localhost) pages.
+  $("unsupported").hidden = false;
+  $("unsupported").innerHTML =
+    `This page was opened over plain http, so the browser won't allow folder access. ` +
+    `<a href="https://${location.host}${location.pathname}">Open the secure https:// version</a>.`;
+} else if (!canUseFolders()) {
+  $("unsupported").hidden = false;
+}
 
 // --- Settings ------------------------------------------------------------------
 

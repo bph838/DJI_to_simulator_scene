@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sim Scene Maker</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Sim Scene Maker</h1>
+      <p>DJI drone panorama → RC flight simulator SkyBox &nbsp;·&nbsp; <span class="sim">Heli-X</span></p>
+    </header>
+
+    <main>
+      <div id="unsupported" class="notice" hidden>
+        This app needs Chrome (or Edge) on a computer: it reads and writes folders directly and renders with WebGL2.
+      </div>
+
+      <!-- 1. Photos -->
+      <section id="step-photos" class="card">
+        <h2><span class="num">1</span> Drone photos</h2>
+        <p class="hint">Choose the folder holding the 35 <code>PANO_xxxx.JPG</code> frames from one DJI sphere panorama.</p>
+        <div class="row">
+          <button id="pick-photos" class="primary">Choose photo folder…</button>
+          <span id="photos-status" class="muted"></span>
+        </div>
+        <div id="load-progress" class="progress" hidden><div></div></div>
+        <div id="shoot-summary" hidden>
+          <dl id="summary-list" class="summary"></dl>
+          <details>
+            <summary>Frame data (gimbal angles from each photo)</summary>
+            <div class="table-wrap"><table id="frame-table"></table></div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 2. Align & preview -->
+      <section id="step-preview" class="card" hidden>
+        <h2><span class="num">2</span> Line up &amp; check</h2>
+        <p class="hint">
+          Photos are placed using the gimbal angles DJI records in each one. Set <b>front</b> to face the flight line:
+          click that spot on the panorama, or look at it in the viewer and press <i>Use this view as front</i>.
+        </p>
+
+        <div class="pano-wrap">
+          <canvas id="pano-map" title="Click to make this direction the front"></canvas>
+        </div>
+
+        <div class="controls">
+          <label class="heading">
+            Front heading
+            <input id="heading-range" type="range" min="0" max="360" step="0.1" value="0" />
+            <input id="heading-num" type="number" min="0" max="360" step="0.1" value="0" />°
+          </label>
+          <label><input id="show-outlines" type="checkbox" checked /> Photo outlines</label>
+          <label><input id="exposure" type="checkbox" checked /> Even out exposure</label>
+          <label><input id="fill-gaps" type="checkbox" checked /> Fill sky gap</label>
+          <label title="Higher = narrower blend between photos">
+            Seam blend
+            <input id="feather" type="range" min="0.5" max="4" step="0.25" value="2" />
+          </label>
+        </div>
+
+        <div class="viewer-wrap">
+          <canvas id="viewer"></canvas>
+          <div class="viewer-hud">
+            <span id="view-dir"></span>
+            <button id="use-view">Use this view as front</button>
+            <label><input id="show-grid" type="checkbox" /> Cube edges</label>
+          </div>
+        </div>
+        <p class="hint">
+          Drag to look around, scroll to zoom. Magenta on the panorama = no photo covers it (DJI leaves a small gap
+          straight overhead); with <i>Fill sky gap</i> on it is painted in from the surrounding sky.
+        </p>
+
+        <details>
+          <summary>Faces as saved for Heli-X (mirrored, as Heli-X expects)</summary>
+          <div id="face-strip" class="face-strip"></div>
+        </details>
+
+        <details>
+          <summary>Advanced lens settings</summary>
+          <div class="controls">
+            <label>35 mm equivalent focal length <input id="focal35" type="number" step="0.1" min="10" max="60" /> mm</label>
+            <label>Lens distortion k1 <input id="k1" type="number" step="0.005" value="0" /></label>
+          </div>
+        </details>
+      </section>
+
+      <!-- 3. Export -->
+      <section id="step-export" class="card" hidden>
+        <h2><span class="num">3</span> Make the Heli-X scene</h2>
+        <div class="form">
+          <label>Scene name <input id="scene-name" type="text" placeholder="My_Flying_Field" /></label>
+          <div class="field">
+            <span>Sizes</span>
+            <label><input type="checkbox" name="size" value="1024" /> 1024</label>
+            <label><input type="checkbox" name="size" value="2048" checked /> 2048</label>
+            <label><input type="checkbox" name="size" value="4096" /> 4096</label>
+            <label title="Drone photos hold about 4096 worth of detail; 8192 is upscaled"><input type="checkbox" name="size" value="8192" /> 8192 <small>(upscaled)</small></label>
+          </div>
+          <div class="field">
+            <span>Format</span>
+            <label><input type="radio" name="format" value="jpg" checked /> JPG</label>
+            <label><input type="radio" name="format" value="png" /> PNG</label>
+            <label id="quality-wrap">quality <input id="jpeg-quality" type="number" min="50" max="100" value="92" /></label>
+          </div>
+          <div class="field">
+            <span>Also</span>
+            <label><input id="write-xml" type="checkbox" checked /> Create / update <code id="xml-name">scene.xml</code> resolution flags</label>
+            <label><input id="write-equirect" type="checkbox" /> Save 360° panorama (for Blender)</label>
+          </div>
+          <label>Author (for a new airport file) <input id="author" type="text" /></label>
+        </div>
+
+        <p class="path">Output: <code id="out-path">choose a folder</code></p>
+        <div class="row">
+          <button id="pick-output">Choose output folder…</button>
+          <button id="export" class="primary" disabled>Make scene</button>
+        </div>
+        <div id="export-progress" class="progress" hidden><div></div></div>
+        <pre id="log" class="log" hidden></pre>
+      </section>
+    </main>
+
+    <footer>Everything runs in your browser — photos are never uploaded.</footer>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

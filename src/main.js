@@ -12,6 +12,9 @@ const $ = (id) => document.getElementById(id);
 const PREVIEW_FACE = 512;
 const PREVIEW_PANO = 1600;
 
+$("app-version").textContent = `v${__APP_VERSION__}` + (__APP_COMMIT__ ? ` · ${__APP_COMMIT__}` : "");
+$("app-version").title = "Version · build commit";
+
 const state = {
   frames: [],
   summary: null,
